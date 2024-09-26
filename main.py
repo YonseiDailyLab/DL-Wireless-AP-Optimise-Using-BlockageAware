@@ -1,3 +1,4 @@
+import logging
 import torch
 import numpy as np
 from matplotlib import pyplot as plt
@@ -5,6 +6,8 @@ from mpl_toolkits.mplot3d import Axes3D
 from tqdm import tqdm
 
 from datasets import CubeObstacle, CylinderObstacle
+
+np.random.seed(42)
 
 if __name__ == '__main__':
     # Create dataset

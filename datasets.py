@@ -3,6 +3,8 @@ from abc import abstractmethod
 
 import numpy as np
 from matplotlib import pyplot as plt
+import torch
+from torch.utils.data import Dataset
 
 class Obstacle:
     def __init__(self, x: int, y: int, height: int):
@@ -30,8 +32,6 @@ class Obstacle:
         pass
 
 
-
-
 class CubeObstacle(Obstacle):
     def __init__(self, x: int, y: int, height: int, width: int, depth: int):
         super().__init__(x, y, height)
@@ -44,24 +44,24 @@ class CubeObstacle(Obstacle):
 
         __points = [
                     # front face
-                    np.array([[x + width * np.random.rand() for _ in range(fb)],
+                    np.array([x + width * np.random.rand(fb),
                               [y] * np.ones(fb, ),
-                              [height * np.random.rand() for _ in range(fb)]]),
+                              height * np.random.rand(fb)]),
                     # back face
-                    np.array([[x + width * np.random.rand() for _ in range(fb)],
+                    np.array([x + width * np.random.rand(fb),
                               [(y + depth)] * np.ones(fb, ),
-                              [height * np.random.rand() for _ in range(fb)]]),
+                              height * np.random.rand(fb)]),
                     # left face
                     np.array([[x] * np.ones(lr, ),
-                              [y + depth * np.random.rand() for _ in range(lr)],
-                              [height * np.random.rand() for _ in range(lr)]]),
+                              y + depth * np.random.rand(lr),
+                              height * np.random.rand(lr)]),
                     # right face
                     np.array([[x + width] * np.ones(lr, ),
-                              [y + depth * np.random.rand() for _ in range(lr)],
-                              [height * np.random.rand() for _ in range(lr)]]),
+                              y + depth * np.random.rand(lr),
+                              height * np.random.rand(lr)]),
                     # top face
-                    np.array([[x + width * np.random.rand() for _ in range(top)],
-                              [y + depth * np.random.rand() for _ in range(top)],
+                    np.array([x + width * np.random.rand(top),
+                              y + depth * np.random.rand(top),
                               [height] * np.ones(top, )])
                     ]
         # concatenate all
@@ -115,6 +115,31 @@ class CylinderObstacle(Obstacle):
     def plot(self, ax):
         return ax.scatter(self.points[0], self.points[1], self.points[2])
 
+
+class ChannelDataset(Dataset):
+    def __init__(self, x_data: np.ndarray, gnd_nodes: int, area_size: int, v_speed: int):
+        super(ChannelDataset, self).__init__()
+        self.x_data = torch.zeros(x_data, gnd_nodes + 1, 4)
+        for i in range(x_data):
+            temp_dist = area_size * (torch.rand(gnd_nodes + 1, 4) - 0.5)
+
+            ## velocity of vehicle
+            temp_x_vel = torch.rand(gnd_nodes + 1, 1)
+            temp_vel_x = v_speed * torch.cos(2 * torch.pi * temp_x_vel)
+            temp_vel_y = v_speed * torch.sin(2 * torch.pi * temp_x_vel)
+
+            temp_dist[:, 2:3] = temp_vel_x
+            temp_dist[:, 3:4] = temp_vel_y
+
+            temp_dist[gnd_nodes, :] = 0
+
+            self.x_data[i] = temp_dist
+
+    def __len__(self):
+        return len(self.x_data)
+
+    def __getitem__(self, idx):
+        return torch.FloatTensor(self.x_data[idx])
 
 if __name__ == "__main__":
     cube = CubeObstacle(0, 0, 0, 10, 10)
