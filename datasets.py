@@ -4,11 +4,11 @@ from abc import abstractmethod
 import numpy as np
 from matplotlib import pyplot as plt
 
-class DotCloud:
+class Obstacle:
     def __init__(self, x: int, y: int, height: int):
         self.shape = {"x": x,
                       "y": y,
-                      "z": height}
+                      "height": height}
 
     @property
     def x(self):
@@ -26,42 +26,46 @@ class DotCloud:
         return f"DotCloud: {self.shape}"
 
     @abstractmethod
-    def show2plt(self):
+    def plot(self, ax):
         pass
 
 
 
 
-class CubeCloud(DotCloud):
-    def __init__(self, x: int, y: int, height: int, width: int, depth: int, n: int=20):
+class CubeObstacle(Obstacle):
+    def __init__(self, x: int, y: int, height: int, width: int, depth: int):
         super().__init__(x, y, height)
         self.shape["width"] = width
-        self.shape["height"] = depth
+        self.shape["depth"] = depth
+
+        top = width*depth//4
+        fb = width*height//4
+        lr = depth*height//4
 
         __points = [
                     # front face
-                    np.array([[x + width * np.random.rand() for _ in range(n)],
-                              [y] * np.ones(n, ),
-                              [height * np.random.rand() for _ in range(n)]]),
+                    np.array([[x + width * np.random.rand() for _ in range(fb)],
+                              [y] * np.ones(fb, ),
+                              [height * np.random.rand() for _ in range(fb)]]),
                     # back face
-                    np.array([[x + width * np.random.rand() for _ in range(n)],
-                              [(y + depth)] * np.ones(n, ),
-                              [height * np.random.rand() for _ in range(n)]]),
+                    np.array([[x + width * np.random.rand() for _ in range(fb)],
+                              [(y + depth)] * np.ones(fb, ),
+                              [height * np.random.rand() for _ in range(fb)]]),
                     # left face
-                    np.array([[x] * np.ones(n, ),
-                              [y + depth * np.random.rand() for _ in range(n)],
-                              [height * np.random.rand() for _ in range(n)]]),
+                    np.array([[x] * np.ones(lr, ),
+                              [y + depth * np.random.rand() for _ in range(lr)],
+                              [height * np.random.rand() for _ in range(lr)]]),
                     # right face
-                    np.array([[x + width] * np.ones(n, ),
-                              [y + depth * np.random.rand() for _ in range(n)],
-                              [height * np.random.rand() for _ in range(n)]]),
+                    np.array([[x + width] * np.ones(lr, ),
+                              [y + depth * np.random.rand() for _ in range(lr)],
+                              [height * np.random.rand() for _ in range(lr)]]),
                     # top face
-                    np.array([[x + width * np.random.rand() for _ in range(n)],
-                              [y + depth * np.random.rand() for _ in range(n)],
-                              [height] * np.ones(n, )])
+                    np.array([[x + width * np.random.rand() for _ in range(top)],
+                              [y + depth * np.random.rand() for _ in range(top)],
+                              [height] * np.ones(top, )])
                     ]
         # concatenate all
-        self.points = np.concatenate(__points)
+        self.points = np.concatenate(__points, axis=1)
 
     @property
     def width(self):
@@ -74,31 +78,32 @@ class CubeCloud(DotCloud):
     def __str__(self):
         return f"CubeCloud: {self.shape}"
 
-    def show2plt(self):
-        pass
+    def plot(self, ax):
+        return ax.scatter(self.points[0], self.points[1], self.points[2])
 
 
-class CylinderCloud(DotCloud):
-    def __init__(self, x: int, y: int, height: int, radius: int, n: int=20):
+class CylinderObstacle(Obstacle):
+    def __init__(self, x: int, y: int, height: int, radius: int):
         super().__init__(x, y, height)
         self.shape["radius"] = radius
 
+        t_num = int(radius**2*np.pi)//2
+        s_num = int(2*radius*np.pi*height)//2
+
+        r_top = radius * np.sqrt(np.random.rand(t_num))
+        theta_top = np.random.rand(t_num) * 2 * np.pi
+        angles_side = np.linspace(0, 2 * np.pi, s_num, endpoint=False)
         __points = [
-                    # top face
-                    np.array([[x + radius * np.cos(2 * np.pi * np.random.rand()) for _ in range(n)],
-                              [y + radius * np.sin(2 * np.pi * np.random.rand()) for _ in range(n)],
-                              [height] * np.ones(n, )]),
-                    # bottom face
-                    np.array([[x + radius * np.cos(2 * np.pi * np.random.rand()) for _ in range(n)],
-                              [y + radius * np.sin(2 * np.pi * np.random.rand()) for _ in range(n)],
-                              [0] * np.ones(n, )]),
-                    # side face
-                    np.array([[x + radius * np.cos(2 * np.pi * np.random.rand()) for _ in range(n)],
-                              [y + radius * np.sin(2 * np.pi * np.random.rand()) for _ in range(n)],
-                              [height * np.random.rand() for _ in range(n)]])
-                    ]
-        # concatenate all
-        self.points = np.concatenate(__points)
+            # top face
+            np.array([x + r_top * np.cos(theta_top),
+                      y + r_top * np.sin(theta_top),
+                      [height] * t_num]),
+            # side faces
+            np.array([x + radius * np.cos(angles_side),
+                      y + radius * np.sin(angles_side),
+                      height * np.random.rand(s_num)])
+        ]
+        self.points = np.concatenate(__points, axis=1)
 
     @property
     def radius(self):
@@ -107,11 +112,11 @@ class CylinderCloud(DotCloud):
     def __str__(self):
         return f"CylinderCloud: {self.shape}"
 
-    def show2plt(self):
-        pass
+    def plot(self, ax):
+        return ax.scatter(self.points[0], self.points[1], self.points[2])
 
 
 if __name__ == "__main__":
-    cube = CubeCloud(0, 0, 0, 10, 10)
+    cube = CubeObstacle(0, 0, 0, 10, 10)
     print(cube.shape)
     print(cube.points)
