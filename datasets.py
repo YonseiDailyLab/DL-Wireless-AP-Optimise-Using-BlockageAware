@@ -11,6 +11,7 @@ class Obstacle:
         self.shape = {"x": x,
                       "y": y,
                       "height": height}
+        self.points = [0,0,0]
 
     @property
     def x(self):
@@ -27,8 +28,11 @@ class Obstacle:
     def __str__(self):
         return f"DotCloud: {self.shape}"
 
-    @abstractmethod
     def plot(self, ax):
+        return ax.scatter(self.points[0], self.points[1], self.points[2])
+
+    @abstractmethod
+    def is_inside(self, x: int, y: int, z: int):
         pass
 
 
@@ -78,8 +82,11 @@ class CubeObstacle(Obstacle):
     def __str__(self):
         return f"CubeCloud: {self.shape}"
 
-    def plot(self, ax):
-        return ax.scatter(self.points[0], self.points[1], self.points[2])
+    def is_inside(self, x: int, y: int, z: int):
+        return (self.x <= x <= self.x + self.width and
+                self.y <= y <= self.y + self.depth and
+                self.height <= z <= self.height)
+
 
 
 class CylinderObstacle(Obstacle):
@@ -112,15 +119,16 @@ class CylinderObstacle(Obstacle):
     def __str__(self):
         return f"CylinderCloud: {self.shape}"
 
-    def plot(self, ax):
-        return ax.scatter(self.points[0], self.points[1], self.points[2])
+    def is_inside(self, x: int, y: int, z: int):
+        return ((self.x - x)**2 + (self.y - y)**2 <= self.radius**2 and
+                self.height <= z <= self.height)
 
 
 class ChannelDataset(Dataset):
-    def __init__(self, x_data: np.ndarray, gnd_nodes: int, area_size: int, v_speed: int):
+    def __init__(self, num_sample: np.ndarray, gnd_nodes: int, area_size: int, v_speed: int):
         super(ChannelDataset, self).__init__()
-        self.x_data = torch.zeros(x_data, gnd_nodes + 1, 4)
-        for i in range(x_data):
+        self.x_data = torch.zeros(num_sample, gnd_nodes + 1, 4)
+        for i in range(num_sample):
             temp_dist = area_size * (torch.rand(gnd_nodes + 1, 4) - 0.5)
 
             ## velocity of vehicle
