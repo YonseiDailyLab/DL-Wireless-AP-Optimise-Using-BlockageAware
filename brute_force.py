@@ -2,8 +2,8 @@ import logging
 import numpy as np
 from matplotlib import pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-from numpy import ndarray
 from tqdm import tqdm
+import torch
 
 from datasets import CubeObstacle, CylinderObstacle, ChannelDataset
 from utils.config import Hyperparameters as hparams
@@ -52,9 +52,10 @@ if __name__ == '__main__':
 
     for x in range(hparams.area_size):
         for y in tqdm(range(hparams.area_size)):
-            station_pos = np.array([x-hparams.area_size//2, y-hparams.area_size//2, 0])
-            sig[x, y] = calc_sig_strength(station_pos, gnd_nodes, obstacle_ls)
+            for z in range(70):
+                station_pos = np.array([x-hparams.area_size//2, y-hparams.area_size//2, z])
+                sig[x, y] = calc_sig_strength(station_pos, gnd_nodes, obstacle_ls)
 
     max_idx = np.argmax(sig)
-    print(f"{sig[max_idx]}")
+    print(f"{sig[max_idx]}, {max_idx}")
 
