@@ -1,28 +1,34 @@
-import numpy as np
+# import numpy as np
+import torch
+from torch import Tensor
 
 from utils.config import Hyperparameters as hparams
 from datasets import Obstacle
 
-
-def calc_dist(p1: np.ndarray, p2: np.ndarray, q: np.ndarray):
+def calc_dist(p1: Tensor, p2: Tensor, q: Tensor):
+    p1 = p1.float().to(hparams.device)
+    p2 = p2.float().to(hparams.device)
+    q = q.float().to(hparams.device)
     p1p2 = p2 - p1
     distances = []
     for point in q.T:
         p1q = point - p1
-        t = np.dot(p1q, p1p2) / np.dot(p1p2, p1p2)
+        t = torch.dot(p1q, p1p2) / torch.dot(p1p2, p1p2)
         t = max(0, min(1, t))
-        distances.append(np.linalg.norm((p1 + t * p1p2) - point))
-    return np.array(distances)
+        distances.append(torch.linalg.norm((p1 + t * p1p2) - point))
+    return torch.tensor(distances).to(hparams.device)
 
-def calc_sig_strength(station_pos: np.array, gn_pos: np.ndarray, obst: list[Obstacle]):
+def calc_sig_strength(station_pos: Tensor, gn_pos: Tensor, obst: list[Obstacle]):
+    station_pos = station_pos.float().to(hparams.device)
+    gn_pos = gn_pos.float().to(hparams.device)
     num_gn = gn_pos.shape[0]
-    sig = np.zeros(num_gn)
+    sig = torch.zeros(num_gn).to(hparams.device)
 
     for i in range(num_gn):
-        dist = np.linalg.norm(station_pos - gn_pos[i])
-        min_dist2obst = [np.min(calc_dist(station_pos, gn_pos[i], obst[j].points)) for j in range(len(obst))]
+        dist = torch.linalg.norm(station_pos - gn_pos[i])
+        min_dist2obst = torch.tensor([torch.min(calc_dist(station_pos, gn_pos[i], torch.tensor(obst[j].points).float().to(hparams.device))) for j in range(len(obst))]).to(hparams.device)
 
-        bk_val = np.tanh(0.2 * np.min(min_dist2obst))
+        bk_val = torch.tanh(0.2 * torch.min(min_dist2obst))
         chan_gain = bk_val * hparams.beta_1 / dist + (1 - bk_val) * hparams.beta_2 / (dist ** 1.65)
         sig[i] = hparams.P_AVG * chan_gain / hparams.noise
 
