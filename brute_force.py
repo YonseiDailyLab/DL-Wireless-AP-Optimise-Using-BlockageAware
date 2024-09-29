@@ -51,8 +51,8 @@ if __name__ == '__main__':
     sig = np.ones((hparams.area_size, hparams.area_size)) * -1
 
     for x in range(hparams.area_size):
-        for y in tqdm(range(hparams.area_size)):
-            for z in range(70):
+        for y in range(hparams.area_size):
+            for z in tqdm(range(70), desc="({X:03d}, {Y:03d})".format(X=x, Y=y)):
                 station_pos = np.array([x-hparams.area_size//2, y-hparams.area_size//2, z])
                 sig[x, y] = calc_sig_strength(station_pos, gnd_nodes, obstacle_ls)
 
