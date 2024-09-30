@@ -37,14 +37,14 @@ class Obstacle:
 
 
 class CubeObstacle(Obstacle):
-    def __init__(self, x: int, y: int, height: int, width: int, depth: int):
+    def __init__(self, x: int, y: int, height: int, width: int, depth: int, dot_num: float = 0.05):
         super().__init__(x, y, height)
         self.shape["width"] = width
         self.shape["depth"] = depth
 
-        top = width*depth//4
-        fb = width*height//4
-        lr = depth*height//4
+        top = int(width*depth*dot_num)
+        fb = int(width*height*dot_num)
+        lr = int(depth*height*dot_num)
 
         __points = [
                     # front face
@@ -90,12 +90,12 @@ class CubeObstacle(Obstacle):
 
 
 class CylinderObstacle(Obstacle):
-    def __init__(self, x: int, y: int, height: int, radius: int):
+    def __init__(self, x: int, y: int, height: int, radius: int, dot_num: float = 0.05):
         super().__init__(x, y, height)
         self.shape["radius"] = radius
 
-        t_num = int(radius**2*np.pi)//2
-        s_num = int(2*radius*np.pi*height)//2
+        t_num = int(radius**2*np.pi*dot_num)
+        s_num = int(2*radius*np.pi*height*dot_num)
 
         r_top = radius * np.sqrt(np.random.rand(t_num))
         theta_top = np.random.rand(t_num) * 2 * np.pi

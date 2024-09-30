@@ -9,7 +9,7 @@ from datasets import CubeObstacle, CylinderObstacle, ChannelDataset
 from utils.config import Hyperparameters as hparams
 from utils.tools import calc_sig_strength
 
-np.random.seed(42)
+np.random.seed(52)
 logging.basicConfig(level=logging.INFO)
 
 if __name__ == '__main__':
@@ -30,8 +30,8 @@ if __name__ == '__main__':
     while True:
         if len(gnd_nodes) == hparams.num_node:
             break
-        x = np.random.randint(-hparams.area_size//2, hparams.area_size//2)
-        y = np.random.randint(-hparams.area_size//2, hparams.area_size//2)
+        x = np.random.randint(-hparams.area_size // 2, hparams.area_size // 2)
+        y = np.random.randint(-hparams.area_size // 2, hparams.area_size // 2)
         z = 0
 
         if (x, y) not in gnd_nodes:
@@ -48,14 +48,29 @@ if __name__ == '__main__':
     fig.tight_layout()
     plt.show()
 
-    sig = np.ones((hparams.area_size, hparams.area_size)) * -1
+    X, Y = np.meshgrid(
+        np.arange(-hparams.area_size // 2, hparams.area_size // 2),
+        np.arange(-hparams.area_size // 2, hparams.area_size // 2),
+        indexing='xy'
+    )
+    Z = np.full_like(X, 70)
 
-    for x in range(hparams.area_size):
-        for y in range(hparams.area_size):
-            for z in tqdm(range(70), desc="({X:03d}, {Y:03d})".format(X=x, Y=y)):
-                station_pos = np.array([x-hparams.area_size//2, y-hparams.area_size//2, z])
-                sig[x, y] = calc_sig_strength(station_pos, gnd_nodes, obstacle_ls)
+    station_positions = np.stack((X, Y, Z), axis=-1).reshape(-1, 3)
 
-    max_idx = np.argmax(sig)
-    print(f"{sig[max_idx]}, {max_idx}")
+    sig = np.array([calc_sig_strength(station_pos, gnd_nodes, obstacle_ls) for station_pos in tqdm(station_positions)])
+    sig = sig.reshape(hparams.area_size, hparams.area_size)
 
+    max_idx = np.unravel_index(np.argmax(sig), sig.shape)
+    print(f"Max Signal: {sig[max_idx]}, Index: {max_idx}")
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    for obstacle in obstacle_ls:
+        obstacle.plot(ax)
+        logging.info(f"Obstacle.points.shape: {obstacle.points.shape}")
+
+    ax.scatter(gnd_nodes[:, 0], gnd_nodes[:, 1], gnd_nodes[:, 2], c='r')
+    ax.scatter(max_idx[0]-(hparams.area_size//2), max_idx[1]-(hparams.area_size//2), 70, c='g')
+
+    fig.tight_layout()
+    plt.show()
