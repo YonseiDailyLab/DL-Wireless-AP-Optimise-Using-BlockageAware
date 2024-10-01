@@ -28,7 +28,7 @@ class Obstacle:
     def __str__(self):
         return f"DotCloud: {self.shape}"
 
-    def plot(self, ax):
+    def plot(self, ax: plt.Axes):
         return ax.scatter(self.points[0], self.points[1], self.points[2])
 
     @abstractmethod
