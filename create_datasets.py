@@ -24,42 +24,44 @@ if __name__ == "__main__":
         CubeObstacle(-30, -25, 45, 10, 35),
         CylinderObstacle(0, -30, 70, 10)
     ]
+    gnd_nodes = []
 
-    result_ls = []
-    for _ in trange(200 * 200 * 4, desc="Generating dataset"):
-        gnd_nodes = []
+    for _ in trange(200 * 200 * 4, desc="Generating gnd_nodes..."):
+        temp = []
         while True:
-            if len(gnd_nodes) == hparams.num_node:
+            if len(temp) == hparams.num_node:
                 break
             x = np.random.randint(-hparams.area_size // 2, hparams.area_size // 2)
             y = np.random.randint(-hparams.area_size // 2, hparams.area_size // 2)
             z = 0
 
-            if (x, y) not in gnd_nodes:
+            if (x, y) not in temp:
                 is_inside = False
                 for obstacle in obstacle_ls:
                     if is_inside := obstacle.is_inside(x, y, z):
                         break
-                if not is_inside: gnd_nodes.append((x, y, z))
+                if not is_inside: temp.append((x, y, z))
 
-        X, Y = np.meshgrid(
-            np.arange(-hparams.area_size, hparams.area_size)/2,
-            np.arange(-hparams.area_size, hparams.area_size)/2,
-            indexing='xy'
-        )
-        Z = np.full_like(X, 70)
+        gnd_nodes.append(temp)
 
-        station_positions = np.stack((X, Y, Z), axis=-1).reshape(-1, 3)
-        gnd_nodes = np.array(gnd_nodes)
+    result_ls = []
+    X, Y = np.meshgrid(
+        np.arange(-hparams.area_size//2, hparams.area_size//2),
+        np.arange(-hparams.area_size//2, hparams.area_size//2),
+        indexing='xy'
+    )
+    Z = np.full_like(X, 70)
 
-        # Calculate Signal Strength
+    station_positions = np.stack((X, Y, Z), axis=-1).reshape(-1, 3)
+    gnd_nodes = np.array(gnd_nodes)
+    for i in trange(200 * 200 * 4, desc="Generating dataset"):
 
         sig = np.array(
-            [calc_sig_strength(station_pos, gnd_nodes, obstacle_ls) for station_pos in station_positions])
-        sig = sig.reshape(hparams.area_size*2, hparams.area_size*2)
+            [calc_sig_strength(station_pos, gnd_nodes[i], obstacle_ls) for station_pos in station_positions])
+        sig = sig.reshape(hparams.area_size, hparams.area_size)
 
         max_idx = np.unravel_index(np.argmax(sig), sig.shape)
-        logging.info(f"Max Signal: {sig[max_idx]}, Index: {max_idx}")
+        # logging.info(f"Max Signal: {sig[max_idx]}, Index: {max_idx}")
 
         result_ls.append({
             "gnd1": gnd_nodes[0],
