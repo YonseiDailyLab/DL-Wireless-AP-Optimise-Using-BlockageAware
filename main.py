@@ -37,3 +37,14 @@ if __name__ == '__main__':
     train_dataset = ChannelDataset(hparams.num_samples, hparams.num_node, hparams.area_size, hparams.v_speed)
     logging.info(f"len(dataset): {len(train_dataset)}")
     train_dataloader = DataLoader(train_dataset, batch_size=hparams.batch, shuffle=True)
+
+    # Brute Force coord
+
+    X, Y = np.meshgrid(
+        np.arange(-hparams.area_size // 2, hparams.area_size // 2),
+        np.arange(-hparams.area_size // 2, hparams.area_size // 2),
+        indexing='xy'
+    )
+    Z = np.full_like(X, 70)
+
+    station_positions = np.stack((X, Y, Z), axis=-1).reshape(-1, 3)

@@ -32,7 +32,7 @@ class Obstacle:
         return ax.scatter(self.points[0], self.points[1], self.points[2])
 
     @abstractmethod
-    def is_inside(self, x: int, y: int, z: int):
+    def is_inside(self, x: float, y: float, z: float):
         pass
 
 
@@ -82,7 +82,7 @@ class CubeObstacle(Obstacle):
     def __str__(self):
         return f"CubeCloud: {self.shape}"
 
-    def is_inside(self, x: int, y: int, z: int):
+    def is_inside(self, x: float, y: float, z: float):
         return (self.x <= x <= self.x + self.width and
                 self.y <= y <= self.y + self.depth and
                 self.height <= z <= self.height)
@@ -119,7 +119,7 @@ class CylinderObstacle(Obstacle):
     def __str__(self):
         return f"CylinderCloud: {self.shape}"
 
-    def is_inside(self, x: int, y: int, z: int):
+    def is_inside(self, x: float, y: float, z: float):
         return ((self.x - x)**2 + (self.y - y)**2 <= self.radius**2 and
                 self.height <= z <= self.height)
 
