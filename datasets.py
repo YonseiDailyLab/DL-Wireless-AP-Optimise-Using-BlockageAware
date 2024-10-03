@@ -35,6 +35,9 @@ class Obstacle:
     def is_inside(self, x: float, y: float, z: float):
         pass
 
+    def to_torch(self, device: torch.device, dtype: torch.dtype = torch.float32):
+        return torch.tensor(self.points, dtype=dtype).to(device)
+
 
 class CubeObstacle(Obstacle):
     def __init__(self, x: int, y: int, height: int, width: int, depth: int, dot_num: float = 0.05):
@@ -122,7 +125,7 @@ class CylinderObstacle(Obstacle):
     def is_inside(self, x: float, y: float, z: float):
         return ((self.x - x)**2 + (self.y - y)**2 <= self.radius**2 and
                 self.height <= z <= self.height)
-
+    
 
 class ChannelDataset(Dataset):
     def __init__(self, num_sample: np.ndarray, gnd_nodes: int, area_size: int, v_speed: int):
