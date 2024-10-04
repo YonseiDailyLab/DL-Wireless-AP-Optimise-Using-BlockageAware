@@ -3,10 +3,11 @@ import logging
 import pandas as pd
 import numpy as np
 from tqdm import trange
+import torch
 
 from datasets import CubeObstacle, CylinderObstacle, ChannelDataset
 from utils.config import Hyperparameters as hparams
-from utils.tools import calc_sig_strength
+from utils.tools import calc_sig_strength, calc_sig_strength_gpu
 
 logging.basicConfig(level=logging.INFO)
 
@@ -24,6 +25,8 @@ if __name__ == "__main__":
         CubeObstacle(-30, -25, 45, 10, 35),
         CylinderObstacle(0, -30, 70, 10)
     ]
+
+    for obstacle in obstacle_ls: obstacle.to_torch(hparams.device)
     gnd_nodes = []
 
     for _ in trange(200 * 200 * 4, desc="Generating gnd_nodes..."):
@@ -31,8 +34,8 @@ if __name__ == "__main__":
         while True:
             if len(temp) == hparams.num_node:
                 break
-            x = np.random.randint(-hparams.area_size // 2, hparams.area_size // 2)
-            y = np.random.randint(-hparams.area_size // 2, hparams.area_size // 2)
+            x = np.random.rand() * hparams.area_size - hparams.area_size // 2
+            y = np.random.rand() * hparams.area_size - hparams.area_size // 2
             z = 0
 
             if (x, y) not in temp:
@@ -52,12 +55,12 @@ if __name__ == "__main__":
     )
     Z = np.full_like(X, 70)
 
-    station_positions = np.stack((X, Y, Z), axis=-1).reshape(-1, 3)
-    gnd_nodes = np.array(gnd_nodes)
+    station_positions = torch.tensor(np.stack((X, Y, Z), axis=-1).reshape(-1, 3), dtype=torch.float32).to(hparams.device)
+    gnd_nodes = torch.tensor(np.array(gnd_nodes), dtype=torch.float32).to(hparams.device)
+
     for i in trange(200 * 200 * 4, desc="Generating dataset"):
 
-        sig = np.array(
-            [calc_sig_strength(station_pos, gnd_nodes[i], obstacle_ls) for station_pos in station_positions])
+        sig = np.array([calc_sig_strength_gpu(station_pos, gnd_nodes, obstacle_ls) for station_pos in station_positions])
         sig = sig.reshape(hparams.area_size, hparams.area_size)
 
         max_idx = np.unravel_index(np.argmax(sig), sig.shape)
