@@ -4,7 +4,10 @@ from abc import abstractmethod
 import numpy as np
 from matplotlib import pyplot as plt
 import torch
+from numpy import dtype
 from torch.utils.data import Dataset
+
+from utils.config import Hyperparameters as hparams
 
 class Obstacle:
     def __init__(self, x: int, y: int, height: int):
@@ -127,30 +130,45 @@ class CylinderObstacle(Obstacle):
                 self.height <= z <= self.height)
 
 
-class ChannelDataset(Dataset):
-    def __init__(self, num_sample: np.ndarray, gnd_nodes: int, area_size: int, v_speed: int):
-        super(ChannelDataset, self).__init__()
-        self.x_data = torch.zeros(num_sample, gnd_nodes + 1, 4)
-        for i in range(num_sample):
-            temp_dist = area_size * (torch.rand(gnd_nodes + 1, 4) - 0.5)
+class BlockageDataset(Dataset):
+    def __init__(self, data_num:int, obstacle_ls: list[Obstacle], gnd_num: int = 4):
+        super(BlockageDataset, self).__init__()
+        self.data_num = data_num
 
-            ## velocity of vehicle
-            temp_x_vel = torch.rand(gnd_nodes + 1, 1)
-            temp_vel_x = v_speed * torch.cos(2 * torch.pi * temp_x_vel)
-            temp_vel_y = v_speed * torch.sin(2 * torch.pi * temp_x_vel)
+        # Generate station positions
+        X, Y = np.meshgrid(
+            np.arange(-hparams.area_size // 2, hparams.area_size // 2),
+            np.arange(-hparams.area_size // 2, hparams.area_size // 2),
+            indexing='xy'
+        )
+        Z = np.full_like(X, 70)
+        self.station_pos = torch.tensor(np.stack((X, Y, Z), axis=-1).reshape(-1, 3), dtype=torch.float32)
 
-            temp_dist[:, 2:3] = temp_vel_x
-            temp_dist[:, 3:4] = temp_vel_y
+        # Generate ground nodes
+        self.gnd_nodes = torch.zeros((data_num, gnd_num, 3), dtype=torch.float32)
+        for i in range(data_num):
+            gnd_node = []
+            while len(gnd_node) < gnd_num:
+                x = np.random.rand() * hparams.area_size - hparams.area_size // 2
+                y = np.random.rand() * hparams.area_size - hparams.area_size // 2
+                z = 0
+                if (x, y) not in gnd_node:
+                    is_inside = any(obstacle.is_inside(x, y, z) for obstacle in obstacle_ls)
+                    if not is_inside:
+                        gnd_node.append((x, y, z))
+            self.gnd_nodes[i] = torch.tensor(np.array(gnd_node), dtype=torch.float32)
 
-            temp_dist[gnd_nodes, :] = 0
-
-            self.x_data[i] = temp_dist
+        # obstacle points
+        obst_points = []
+        for obstacle in obstacle_ls:
+            obst_points.append(torch.tensor(obstacle.points, dtype=torch.float32))
+        self.obst_points = torch.cat([op for op in obst_points], dim=1).mT
 
     def __len__(self):
-        return len(self.x_data)
+        return self.data_num
 
     def __getitem__(self, idx):
-        return torch.FloatTensor(self.x_data[idx])
+        return self.station_pos, self.gnd_nodes[idx], self.obst_points
 
 if __name__ == "__main__":
     cube = CubeObstacle(0, 0, 0, 10, 10)
