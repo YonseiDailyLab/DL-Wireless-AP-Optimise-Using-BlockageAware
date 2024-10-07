@@ -29,30 +29,24 @@ def calc_sig_strength(station_pos: np.array, gn_pos: np.ndarray, obst: list[Obst
 
     return np.sum(sig)/num_gn
 
+def calc_min_dist(station_pos: Tensor, gnd_nodes: Tensor, obst_points: Tensor):
 
-def calc_dist_gpu(p1: Tensor, p2: Tensor, q: Tensor):
-    p1p2 = p2 - p1
-    p1q = q.T.unsqueeze(1) - p1
-    dot_product = torch.sum(p1q * p1p2, dim=-1)  # [791, 40000]
-    p1p2_norm_sq = torch.sum(p1p2 * p1p2, dim=-1)  # [40000]
-    t = torch.clamp(dot_product / p1p2_norm_sq, 0, 1)
-    closest_points = p1 + t.unsqueeze(-1) * p1p2
-    distances = torch.linalg.norm(closest_points - q.T.unsqueeze(1), dim=-1)
-    return distances
+    station_exp = station_pos.unsqueeze(1).unsqueeze(2)
+    gnd_exp = gnd_nodes.unsqueeze(0).unsqueeze(2)
+    obst_exp = obst_points.unsqueeze(0).unsqueeze(1)
 
+    vec_station_gnd = gnd_exp - station_exp
+    vec_station_obst = obst_exp - station_exp
 
-def calc_sig_strength_gpu(station_pos: Tensor, gn_pos: Tensor, obst: list[Obstacle]):
-    num_gn = gn_pos.shape[0]
-    sig = torch.zeros(num_gn)
+    vec_station_gnd = vec_station_gnd.expand(-1, -1, obst_points.shape[0], -1)
 
-    for i in range(num_gn):
-        dist = torch.linalg.norm(station_pos - gn_pos[i])
+    dot_product = torch.sum(vec_station_obst * vec_station_gnd, dim=-1)
+    norm_sq = torch.sum(vec_station_gnd * vec_station_gnd, dim=-1)
 
-        # Vectorized calculation for minimum distances to obstacles
-        min_dist2obst = torch.tensor([torch.min(calc_dist_gpu(station_pos, gn_pos[i], obst[j].points)) for j in range(len(obst))])
+    t = torch.clamp(dot_product / norm_sq, 0, 1)
 
-        bk_val = torch.tanh(0.2 * torch.min(min_dist2obst))
-        chan_gain = bk_val * hparams.beta_1 / dist + (1 - bk_val) * hparams.beta_2 / (dist ** 1.65)
-        sig[i] = hparams.P_AVG * chan_gain / hparams.noise
+    closest_p = station_exp + t.unsqueeze(-1) * vec_station_gnd
+    dist = torch.linalg.norm(closest_p - obst_exp, dim=-1)
+    min_dist = torch.min(dist, dim=-1).values
 
-    return torch.sum(sig)/num_gn
+    return min_dist
