@@ -4,13 +4,13 @@ import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
-from tqdm import trange
+from tqdm import tqdm
 
 from datasets import CubeObstacle, CylinderObstacle, BlockageDataset
 from utils.config import Hyperparameters as hparams
 from utils.tools import calc_min_dist
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 def createDirectory(directory):
     if not os.path.exists(directory):
@@ -26,10 +26,10 @@ if __name__ == "__main__":
     ]
 
     # Create dataset
-    dataset = BlockageDataset(40000, obstacle_ls)
+    dataset = BlockageDataset(40000, obstacle_ls).to(hparams.device)
     logging.info(f"len(dataset): {len(dataset)}")
     dataloader = DataLoader(dataset)
-    for i, data in enumerate(dataloader):
+    for i, data in enumerate(tqdm(dataloader)):
         station_pos, gnd_nodes, obst_points = data
         station_pos = station_pos.squeeze()
         gnd_nodes = gnd_nodes.squeeze()

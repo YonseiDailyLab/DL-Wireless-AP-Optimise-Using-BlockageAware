@@ -170,6 +170,12 @@ class BlockageDataset(Dataset):
     def __getitem__(self, idx):
         return self.station_pos, self.gnd_nodes[idx], self.obst_points
 
+    def to(self, device: torch.device):
+        self.station_pos = self.station_pos.to(device)
+        self.gnd_nodes = self.gnd_nodes.to(device)
+        self.obst_points = self.obst_points.to(device)
+        return self
+
 if __name__ == "__main__":
     cube = CubeObstacle(0, 0, 0, 10, 10)
     print(cube.shape)
