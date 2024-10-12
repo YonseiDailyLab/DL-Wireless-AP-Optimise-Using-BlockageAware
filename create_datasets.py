@@ -17,8 +17,11 @@ def createDirectory(directory):
         os.makedirs(directory)
 
 def save_df(path: str, data: list):
-    df = pd.DataFrame(data, columns=["gnd1", "gnd2", "gnd3", "gnd4", "station",
-                                          "sig_1", "sig_2", "sig_3", "sig_4", "sig_avg"])
+    df = pd.DataFrame(data, columns=["gnd1_x","gnd1_y", "gnd1_z", "gnd2_x",
+                                     "gnd2_y", "gnd2_z", "gnd3_x", "gnd3_y",
+                                     "gnd3_z", "gnd4_x", "gnd4_y", "gnd4_z",
+                                     "result_x", "result_y", "result_z",
+                                     "sig1", "sig2", "sig3", "sig4", "sig_max"])
     createDirectory(path)
     df.to_csv(f"{path}/data.csv", index=False)
 
@@ -59,9 +62,12 @@ if __name__ == "__main__":
             np_sig = sig.cpu().numpy()
             np_sig_max = sig_max.cpu().numpy()
 
-            result_ls.append([np_gnd_nodes[0], np_gnd_nodes[1], np_gnd_nodes[2], np_gnd_nodes[3],
-                              np_result, np_sig[sig_max_idx, 0], np_sig[sig_max_idx,1],
-                              np_sig[sig_max_idx,2], np_sig[sig_max_idx,3], np_sig_max])
+            result_ls.append([np_gnd_nodes[0, 0], np_gnd_nodes[0, 1], np_gnd_nodes[0, 2], np_gnd_nodes[1, 0],
+                              np_gnd_nodes[1, 1], np_gnd_nodes[1, 2], np_gnd_nodes[2, 0], np_gnd_nodes[2, 1],
+                              np_gnd_nodes[2, 2], np_gnd_nodes[3, 0], np_gnd_nodes[3, 1], np_gnd_nodes[3, 2],
+                              np_result[0], np_result[1], np_result[2],
+                              np_sig[sig_max_idx, 0], np_sig[sig_max_idx, 1],
+                              np_sig[sig_max_idx, 2], np_sig[sig_max_idx, 3], np_sig_max])
             logging.info(f"Result: {result}, sig_max: {sig_max}")
 
     except KeyboardInterrupt:
