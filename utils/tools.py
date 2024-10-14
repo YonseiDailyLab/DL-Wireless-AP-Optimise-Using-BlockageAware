@@ -6,10 +6,10 @@ from utils.config import Hyperparameters as hparams
 from datasets import Obstacle
 
 def calc_dist(p1: np.ndarray, p2: np.ndarray, q: np.ndarray):
-    p1p2 = p2 - p1
-    p1q = q.T - p1
-    t = np.clip(np.einsum('xy,y->x', p1q, p1p2) / np.dot(p1p2, p1p2), 0, 1)
-    distances = np.linalg.norm((p1 + t[:, np.newaxis] * p1p2) - q.T, axis=1)
+    v = p2 - p1
+    w = q.T - p1
+    t = np.clip(np.einsum('xy,y->x', w, v) / np.dot(v, v), 0, 1)
+    distances = np.linalg.norm((p1 + t[:, np.newaxis] * v) - q.T, axis=1)
     return distances
 
 
@@ -28,6 +28,22 @@ def calc_sig_strength(station_pos: np.array, gn_pos: np.ndarray, obst: list[Obst
         sig[i] = hparams.P_AVG * chan_gain / hparams.noise
 
     return np.sum(sig)/num_gn
+
+def calc_dist_gpu(p1: Tensor, p2: Tensor, q: Tensor):
+    v = p2 - p1
+    w = q - p1
+    t = torch.clamp(torch.inner(v, w) / torch.sum(v * v, dim = -1).unsqueeze(1), 0, 1)
+    dist = torch.norm(p1.unsqueeze(0).unsqueeze(1) + t.unsqueeze(-1) * v.unsqueeze(1) - q, dim = -1)
+    return dist
+
+def calc_sig_strength_gpu(station_pos: Tensor, gn_pos: Tensor, obst: Tensor):
+
+    xy_dist = torch.norm(station_pos - gn_pos, dim=-1)
+    dist = calc_dist_gpu(station_pos, gn_pos, obst)
+    bk_val = torch.tanh_(0.2 * torch.min(dist, dim=1).values)
+    chan_gain = bk_val * hparams.beta_1 / xy_dist + (1 - bk_val) * hparams.beta_2 / (xy_dist ** 1.65)
+    sig = hparams.P_AVG * chan_gain / hparams.noise
+    return torch.mean(sig)
 
 def calc_min_dist(station_pos: Tensor, gnd_nodes: Tensor, obst_points: Tensor):
 
