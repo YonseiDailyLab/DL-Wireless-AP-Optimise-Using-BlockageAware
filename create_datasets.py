@@ -34,7 +34,7 @@ if __name__ == "__main__":
     ]
 
     # Create dataset
-    dataset = BlockageDataset(10000, obstacle_ls).to(hparams.device)
+    dataset = BlockageDataset(20000, obstacle_ls).to(hparams.device)
     logging.info(f"len(dataset): {len(dataset)}")
     dataloader = DataLoader(dataset)
     try:
