@@ -17,7 +17,13 @@ def createDirectory(directory):
         os.makedirs(directory)
 
 def save_df(path: str, data: list):
-    df = pd.DataFrame(data, columns=["gnd1_x", "gnd1_y", "gnd1_z", "gnd2_x", "gnd2_y", "gnd2_z",
+    if os.path.exists(f"{path}/data.csv"):
+        df = pd.read_csv(f"{path}/data.csv")
+        df = pd.concat([df, pd.DataFrame(data, columns=["gnd1_x", "gnd1_y", "gnd1_z", "gnd2_x", "gnd2_y", "gnd2_z",
+                                                        "gnd3_x", "gnd3_y", "gnd3_z", "gnd4_x", "gnd4_y", "gnd4_z",
+                                                        "result_x", "result_y", "result_z"])])
+    else:
+        df = pd.DataFrame(data, columns=["gnd1_x", "gnd1_y", "gnd1_z", "gnd2_x", "gnd2_y", "gnd2_z",
                                      "gnd3_x", "gnd3_y", "gnd3_z", "gnd4_x", "gnd4_y", "gnd4_z",
                                      "result_x", "result_y", "result_z"])
     createDirectory(path)
@@ -34,7 +40,7 @@ if __name__ == "__main__":
     ]
 
     # Create dataset
-    dataset = BlockageDataset(20000, obstacle_ls).to(hparams.device)
+    dataset = BlockageDataset(40000, obstacle_ls).to(hparams.device)
     logging.info(f"len(dataset): {len(dataset)}")
     dataloader = DataLoader(dataset)
     try:
