@@ -34,9 +34,9 @@ if __name__ == "__main__":
 
     # Create obstacles and convert to torch tensors
     obstacle_ls = [
-        CubeObstacle(-30, 15, 35, 60, 20),
-        CubeObstacle(-30, -25, 45, 10, 35),
-        CylinderObstacle(0, -30, 70, 10)
+        CubeObstacle(-30, 15, 35, 60, 20, 0.3),
+        CubeObstacle(-30, -25, 45, 10, 35, 0.3),
+        CylinderObstacle(0, -30, 70, 10, 0.3)
     ]
 
     # Create dataset
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     logging.info(f"len(dataset): {len(dataset)}")
     dataloader = DataLoader(dataset)
     try:
-        for i, data in enumerate(dataloader):
+        for i, data in enumerate(tqdm(dataloader)):
             print(f"Batch {i}")
             station_pos, gnd_nodes, obst_points = data
             station_pos = station_pos.squeeze()
