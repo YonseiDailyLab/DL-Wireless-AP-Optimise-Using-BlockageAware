@@ -30,20 +30,31 @@ def calc_sig_strength(station_pos: np.array, gn_pos: np.ndarray, obst: list[Obst
     return np.sum(sig)/num_gn
 
 def calc_dist_gpu(p1: Tensor, p2: Tensor, q: Tensor):
-    v = p2 - p1
-    w = q - p1
-    t = torch.clamp(torch.inner(v, w) / torch.sum(v * v, dim = -1).unsqueeze(1), 0, 1)
-    dist = torch.norm(p1.unsqueeze(0).unsqueeze(1) + t.unsqueeze(-1) * v.unsqueeze(1) - q, dim = -1)
+    v = p2.unsqueeze(0) - p1.unsqueeze(1)
+    w = q.unsqueeze(0) - p1.unsqueeze(1)
+    t = torch.clamp(torch.matmul(v, w.transpose(1, 2)) / torch.sum(v * v, dim=2, keepdim=True),0, 1)
+    v_exp, p1_exp, t_exp, q_exp = v.unsqueeze(2), p1.unsqueeze(1).unsqueeze(2), t.unsqueeze(3), q.unsqueeze(0).unsqueeze(1)
+    p = p1_exp + t_exp * v_exp
+
+    dist = torch.norm(p - q_exp, dim=3)
     return dist
 
 def calc_sig_strength_gpu(station_pos: Tensor, gn_pos: Tensor, obst: Tensor):
-
-    xy_dist = torch.norm(station_pos - gn_pos, dim=-1)
+    xy_dist = torch.norm(station_pos.unsqueeze(1) - gn_pos.unsqueeze(0), dim=-1)
     dist = calc_dist_gpu(station_pos, gn_pos, obst)
-    bk_val = torch.tanh_(0.2 * torch.min(dist, dim=1).values)
-    chan_gain = bk_val * hparams.beta_1 / xy_dist + (1 - bk_val) * hparams.beta_2 / (xy_dist ** 1.65)
+
+    min_dist, _ = torch.min(dist, dim=1)
+    bk_val = torch.tanh(0.2 * min_dist)
+
+    bk_val_exp = bk_val.unsqueeze(1)
+    xy_dist_exp = xy_dist.unsqueeze(2)
+
+    chan_gain = (bk_val_exp * hparams.beta_1 / xy_dist_exp) + \
+                ((1 - bk_val_exp) * hparams.beta_2 / (xy_dist_exp ** 1.65))
+
     sig = hparams.P_AVG * chan_gain / hparams.noise
-    return torch.mean(sig)
+
+    return torch.mean(sig, dim=(1, 2))
 
 def calc_min_dist(station_pos: Tensor, gnd_nodes: Tensor, obst_points: Tensor):
 

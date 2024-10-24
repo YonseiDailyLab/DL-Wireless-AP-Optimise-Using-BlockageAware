@@ -51,8 +51,7 @@ if __name__ == "__main__":
             gnd_nodes = gnd_nodes.squeeze()
             obst_points = obst_points.squeeze()
 
-            sig = torch.tensor([calc_sig_strength_gpu(stat_pos, gnd_nodes, obst_points)
-                                for stat_pos in tqdm(station_pos, desc="Calc Signal Strength")])
+            sig = calc_sig_strength_gpu(station_pos, gnd_nodes, obst_points)
             sig = sig.reshape(hparams.area_size, hparams.area_size)
 
             max_idx = torch.unravel_index(torch.argmax(sig), sig.shape)
