@@ -40,21 +40,15 @@ def calc_dist_gpu(p1: Tensor, p2: Tensor, q: Tensor):
     return dist
 
 def calc_sig_strength_gpu(station_pos: Tensor, gn_pos: Tensor, obst: Tensor):
-    xy_dist = torch.norm(station_pos.unsqueeze(1) - gn_pos.unsqueeze(0), dim=-1)
     dist = calc_dist_gpu(station_pos, gn_pos, obst)
+    bk_val = torch.tanh(torch.min(dist, dim=-1).values*0.2)
 
-    min_dist, _ = torch.min(dist, dim=1)
-    bk_val = torch.tanh(0.2 * min_dist)
-
-    bk_val_exp = bk_val.unsqueeze(1)
-    xy_dist_exp = xy_dist.unsqueeze(2)
-
-    chan_gain = (bk_val_exp * hparams.beta_1 / xy_dist_exp) + \
-                ((1 - bk_val_exp) * hparams.beta_2 / (xy_dist_exp ** 1.65))
+    norm = torch.norm(station_pos.unsqueeze(1) - gn_pos.unsqueeze(0), dim=-1)
+    chan_gain = bk_val * hparams.beta_1 / norm + (1 - bk_val) * hparams.beta_2 / (norm ** 1.65)
 
     sig = hparams.P_AVG * chan_gain / hparams.noise
 
-    return torch.mean(sig, dim=(1, 2))
+    return torch.mean(sig, dim=1)
 
 def calc_min_dist(station_pos: Tensor, gnd_nodes: Tensor, obst_points: Tensor):
 
