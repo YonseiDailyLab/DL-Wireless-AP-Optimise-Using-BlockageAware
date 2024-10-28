@@ -3,6 +3,7 @@ numpy==2.1.1
 pandas==2.2.3
 PyYAML==6.0.2
 scikit-learn==1.5.2
+tensorboard==2.18.0
 torch==2.4.1
 torchaudio==2.4.1
 torchvision==0.19.1

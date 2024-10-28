@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from tqdm import tqdm
 from torch.utils.data import Dataset, DataLoader
+from torch.utils.tensorboard import SummaryWriter
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
@@ -16,6 +17,7 @@ np.random.seed(42)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
 logging.basicConfig(level=logging.INFO)
+writer = SummaryWriter()
 
 batch_size = 1024
 
@@ -64,7 +66,7 @@ if __name__ == '__main__':
     for epoch in range(100000):
         total_loss = []
         model.train()
-        for x_batch, y_batch in tqdm(train_loader, desc=f"Epoch {epoch}"):
+        for x_batch, y_batch in tqdm(train_loader, desc=f"Train_Epoch {epoch}"):
             optimizer.zero_grad()
             y_pred = model(x_batch)
             loss = torch.nn.functional.mse_loss(y_pred, y_batch)
@@ -72,15 +74,19 @@ if __name__ == '__main__':
             total_loss.append(loss.item())
             optimizer.step()
         logging.info(f"Epoch: {epoch}, Loss: {np.mean(total_loss)}")
+        writer.add_scalar("Loss/train", np.mean(total_loss), epoch)
 
         total_val_loss = []
         total_r2 = []
         model.eval()
         with torch.no_grad():
-            for x_val_batch, y_val_batch in val_loader:
+            for x_val_batch, y_val_batch in tqdm(val_loader, desc=f"Val_Epoch {epoch}"):
                 y_val_pred = model(x_val_batch)
                 val_loss = torch.nn.functional.mse_loss(y_val_pred, y_val_batch)
                 r2 = r2_score(y_val_batch.cpu().numpy(), y_val_pred.cpu().numpy())
                 total_val_loss.append(val_loss.item())
                 total_r2.append(r2)
             logging.info(f"Val Loss: {np.mean(total_val_loss)}, R2 Score: {np.mean(total_r2)}")
+            writer.add_scalar("Loss/val", np.mean(total_val_loss), epoch)
+            writer.add_scalar("R2/val", np.mean(total_r2), epoch)
+
