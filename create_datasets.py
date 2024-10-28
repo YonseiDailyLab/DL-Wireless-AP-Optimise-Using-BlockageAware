@@ -10,7 +10,7 @@ from datasets import CubeObstacle, CylinderObstacle, BlockageDataset
 from utils.config import Hyperparameters as hparams
 from utils.tools import calc_sig_strength_gpu
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 def createDirectory(directory):
     if not os.path.exists(directory):
@@ -34,18 +34,17 @@ if __name__ == "__main__":
 
     # Create obstacles and convert to torch tensors
     obstacle_ls = [
-        CubeObstacle(-30, 15, 35, 60, 20, 0.3),
-        CubeObstacle(-30, -25, 45, 10, 35, 0.3),
-        CylinderObstacle(0, -30, 70, 10, 0.3)
+        CubeObstacle(-30, 15, 35, 60, 20, 0.1),
+        CubeObstacle(-30, -25, 45, 10, 35, 0.1),
+        CylinderObstacle(0, -30, 70, 10, 0.1)
     ]
 
     # Create dataset
-    dataset = BlockageDataset(40000, obstacle_ls).to(hparams.device)
+    dataset = BlockageDataset(2**20, obstacle_ls).to(hparams.device)
     logging.info(f"len(dataset): {len(dataset)}")
     dataloader = DataLoader(dataset)
     try:
         for i, data in enumerate(tqdm(dataloader)):
-            print(f"Batch {i}")
             station_pos, gnd_nodes, obst_points = data
             station_pos = station_pos.squeeze()
             gnd_nodes = gnd_nodes.squeeze()

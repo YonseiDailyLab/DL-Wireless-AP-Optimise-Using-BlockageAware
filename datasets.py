@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import torch
 from numpy import dtype
+from tqdm import trange
 from torch.utils.data import Dataset
 
 from utils.config import Hyperparameters as hparams
@@ -142,11 +143,11 @@ class BlockageDataset(Dataset):
             indexing='xy'
         )
         Z = np.full_like(X, 70)
-        self.station_pos = torch.tensor(np.stack((X, Y, Z), axis=-1).reshape(-1, 3), dtype=torch.float32)
+        self.station_pos = torch.tensor(np.stack((X, Y, Z), axis=-1).reshape(-1, 3), dtype=torch.float64)
 
         # Generate ground nodes
         self.gnd_nodes = torch.zeros((data_num, gnd_num, 3))
-        for i in range(data_num):
+        for i in trange(data_num):
             gnd_node = []
             while len(gnd_node) < gnd_num:
                 x = np.random.rand() * hparams.area_size - hparams.area_size // 2
@@ -156,12 +157,12 @@ class BlockageDataset(Dataset):
                     is_inside = any(obstacle.is_inside(x, y, z) for obstacle in obstacle_ls)
                     if not is_inside:
                         gnd_node.append((x, y, z))
-            self.gnd_nodes[i] = torch.tensor(np.array(gnd_node), dtype=torch.float32)
+            self.gnd_nodes[i] = torch.tensor(np.array(gnd_node), dtype=torch.float64)
 
         # obstacle points
         obst_points = []
         for obstacle in obstacle_ls:
-            obst_points.append(torch.tensor(obstacle.points, dtype=torch.float32))
+            obst_points.append(torch.tensor(obstacle.points, dtype=torch.float64))
         self.obst_points = torch.cat([op for op in obst_points], dim=1).mT
 
     def __len__(self):
