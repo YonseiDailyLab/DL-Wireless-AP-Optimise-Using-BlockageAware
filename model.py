@@ -9,7 +9,7 @@ class Net(nn.Module):
         self.hidden_N = hidden_N
         self.hidden_L = hidden_L
         self.layers = nn.ModuleList()
-        self.layers.append(nn.Linear(num_node*3, hidden_N))
+        self.layers.append(nn.Linear(num_node, hidden_N))
         for _ in range(hidden_L):
             self.layers.append(nn.Linear(hidden_N, hidden_N))
 

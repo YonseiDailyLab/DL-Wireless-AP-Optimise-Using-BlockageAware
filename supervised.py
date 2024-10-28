@@ -3,7 +3,7 @@ import logging
 import torch
 import pandas as pd
 import numpy as np
-from tqdm import tqdm
+from tqdm import tqdm, trange
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.preprocessing import MinMaxScaler
@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
 
 from model import Net
+from datasets import CubeObstacle, CylinderObstacle
 
 torch.random.manual_seed(42)
 np.random.seed(42)
@@ -22,9 +23,23 @@ writer = SummaryWriter()
 batch_size = 1024
 
 class SvlDataset(Dataset):
-    def __init__(self, x, y):
-        self.x = torch.tensor(x, dtype=torch.float32).to(device)
-        self.y = torch.tensor(y, dtype=torch.float32).to(device)
+    def __init__(self, x, y, dtype=torch.float32):
+        x = torch.tensor(x, dtype=dtype)
+        obst_tensor = []
+        for _ in trange(x.shape[0], desc="Creating Obstacle Tensors"):
+            obstacle_ls = [
+                CubeObstacle(-30, 15, 35, 60, 20),
+                CubeObstacle(-30, -25, 45, 10, 35),
+                CylinderObstacle(0, -30, 70, 10)
+            ]
+            opst_points = []
+            for opst in obstacle_ls:
+                opst.to_torch(device)
+                opst_points.append(opst.points)
+            obst_tensor.append(torch.cat([op for op in opst_points], dim=1).mT.reshape(1, -1).squeeze(0).cpu().numpy())
+        obst_tensor = torch.tensor(obst_tensor, dtype=dtype)
+        self.x = torch.cat((x, obst_tensor), dim=1).to(device)
+        self.y = torch.tensor(y, dtype=dtype).to(device)
 
     def __len__(self):
         return len(self.x)
@@ -52,14 +67,14 @@ if __name__ == '__main__':
     logging.info(f"X_train shape: {x_train.shape}, Y_train shape: {y_train.shape}")
     logging.info(f"X_val shape: {x_val.shape}, Y_val shape: {y_val.shape}")
 
-    train_dataset = SvlDataset(x_train, y_train)
-    val_dataset = SvlDataset(x_val, y_val)
-
+    train_dataset = SvlDataset(x_train, y_train, dtype=torch.float32)
+    val_dataset = SvlDataset(x_val, y_val, dtype=torch.float32)
+    print(train_dataset.x.shape, train_dataset.y.shape)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
-    model = Net(4, 1024, 4).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    model = Net(train_dataset.x.shape[1], 1024, 8).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)
 
     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
