@@ -45,7 +45,7 @@ if __name__ == '__main__':
         obst_points.append(torch.tensor(obstacle.points, dtype=torch.float32))
     obst_points = torch.cat([op for op in obst_points], dim=1).mT.to(device)
 
-    df = pd.read_csv('data/data.csv')
+    df = pd.concat([pd.read_csv('data/data1.csv'), pd.read_csv('data/data2.csv')])
     x = df.iloc[:, :12].values
     y = df.iloc[:, 12:].values
 
