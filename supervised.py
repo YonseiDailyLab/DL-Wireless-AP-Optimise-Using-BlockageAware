@@ -70,7 +70,7 @@ if __name__ == '__main__':
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     model = Net(train_dataset.x.shape[1], 1024, 4).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=2.5e-4)
 
     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
@@ -121,6 +121,13 @@ if __name__ == '__main__':
                 pred_station = torch.tensor(y_pred_origin[i], dtype=torch.float32).unsqueeze(0).to(device)
                 val_se_ls.append(calc_sig_strength_gpu(val_station, val_gnd, obst_points).cpu().numpy())
                 pred_se_ls.append(calc_sig_strength_gpu(pred_station, val_gnd, obst_points).cpu().numpy())
+
+            val_se_mean = np.mean(val_se_ls)
+            pred_se_mean = np.mean(pred_se_ls)
+            diff_val_pred = val_se_mean - pred_se_mean
+
+            writer.add_scalar("SpectralEfficiency/pred", pred_se_mean, epoch)
+            writer.add_scalar("SpectralEfficiency/diff", diff_val_pred, epoch)
                 
             logging.info(f"val_sig: {np.mean(val_se_ls)}, pred_sig: {np.mean(pred_se_ls)}, val - pred: {np.mean(val_se_ls)-np.mean(pred_se_ls)}")
 
