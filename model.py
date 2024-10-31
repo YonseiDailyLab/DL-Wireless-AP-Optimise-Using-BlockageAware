@@ -27,9 +27,9 @@ class Net(nn.Module):
         for layer, dropout, batch_norm in zip(self.layers, self.dropouts, self.batches):
             z = layer(z)
             z = batch_norm(z)
-            z = F.leaky_relu(z, 0.15)
+            z = F.leaky_relu(z, 0.05)
             z = dropout(z)
-
-        z = self.output(z)
+    
+        z = torch.sigmoid(self.output(z))
         return z
 

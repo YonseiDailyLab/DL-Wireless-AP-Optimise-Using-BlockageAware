@@ -18,7 +18,7 @@ num_blocks: 20  # Number of points to generate for buildings in NFZ
 # Channel settings
 beta_1: 10 ** (-4.643) # LoS
 beta_2: 10 ** (-5.643) # NLoS
-noise: 10 ** (-10.7)
+noise: 10 ** (-9.7)
 P_AVG: 1 # 평균 파워
 P_PEAK: 4 # 최대 파워
 
