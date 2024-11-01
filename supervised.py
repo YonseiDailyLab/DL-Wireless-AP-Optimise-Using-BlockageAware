@@ -46,6 +46,7 @@ if __name__ == '__main__':
     obst_points = torch.cat([op for op in obst_points], dim=1).mT.to(device)
 
     df = pd.concat([pd.read_csv('data/data1.csv'), pd.read_csv('data/data2.csv')])
+    logging.info(df.shape)
     x = df.iloc[:, :12].values
     y = df.iloc[:, 12:].values
 
@@ -74,7 +75,7 @@ if __name__ == '__main__':
 
     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
-    for epoch in range(100000):
+    for epoch in range(10000):
         total_loss = []
         model.train()
         for x_batch, y_batch in tqdm(train_loader, desc=f"Train_Epoch {epoch}"):

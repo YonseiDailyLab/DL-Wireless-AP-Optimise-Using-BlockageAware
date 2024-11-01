@@ -47,6 +47,6 @@ def calc_sig_strength_gpu(station_pos: Tensor, gn_pos: Tensor, obst: Tensor):
     chan_gain = bk_val * hparams.beta_1 / norm + (1 - bk_val) * hparams.beta_2 / (norm ** 1.65)
 
     snr = hparams.P_AVG * chan_gain / hparams.noise
-    se = 10 * torch.log10(1 + snr) # Data rate, Spectral Efficiency
+    se = torch.log2(1 + snr) # Data rate, Spectral Efficiency
     
     return torch.mean(se, dim=1)
