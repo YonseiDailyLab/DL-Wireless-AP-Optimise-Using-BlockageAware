@@ -46,28 +46,7 @@ def calc_sig_strength_gpu(station_pos: Tensor, gn_pos: Tensor, obst: Tensor):
     norm = torch.norm(station_pos.unsqueeze(1) - gn_pos.unsqueeze(0), dim=-1)
     chan_gain = bk_val * hparams.beta_1 / norm + (1 - bk_val) * hparams.beta_2 / (norm ** 1.65)
 
-    sig = hparams.P_AVG * chan_gain / hparams.noise
-
-    return torch.mean(sig, dim=1)
-
-def calc_min_dist(station_pos: Tensor, gnd_nodes: Tensor, obst_points: Tensor):
-
-    station_exp = station_pos.unsqueeze(1).unsqueeze(2)
-    gnd_exp = gnd_nodes.unsqueeze(0).unsqueeze(2)
-    obst_exp = obst_points.unsqueeze(0).unsqueeze(1)
-
-    vec_station_gnd = gnd_exp - station_exp
-    vec_station_obst = obst_exp - station_exp
-
-    vec_station_gnd = vec_station_gnd.expand(-1, -1, obst_points.shape[0], -1)
-
-    dot_product = torch.sum(vec_station_obst * vec_station_gnd, dim=-1)
-    norm_sq = torch.sum(vec_station_gnd * vec_station_gnd, dim=-1)
-
-    t = torch.clamp(dot_product / norm_sq, 0, 1)
-
-    closest_p = station_exp + t.unsqueeze(-1) * vec_station_gnd
-    dist = torch.linalg.norm(closest_p - obst_exp, dim=-1)
-    min_dist = torch.min(dist, dim=-1).values
-
-    return min_dist
+    snr = hparams.P_AVG * chan_gain / hparams.noise
+    se = 10 * torch.log10(1 + snr) # Data rate, Spectral Efficiency
+    
+    return torch.mean(se, dim=1)

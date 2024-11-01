@@ -16,9 +16,9 @@ def createDirectory(directory):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-def save_df(path: str, data: list):
-    if os.path.exists(f"{path}/data.csv"):
-        df = pd.read_csv(f"{path}/data.csv")
+def save_df(path: str, name: str, data: list):
+    if os.path.exists(f"{path}/{name}"):
+        df = pd.read_csv(f"{path}/{name}")
         df = pd.concat([df, pd.DataFrame(data, columns=["gnd1_x", "gnd1_y", "gnd1_z", "gnd2_x", "gnd2_y", "gnd2_z",
                                                         "gnd3_x", "gnd3_y", "gnd3_z", "gnd4_x", "gnd4_y", "gnd4_z",
                                                         "result_x", "result_y", "result_z"])])
@@ -27,7 +27,7 @@ def save_df(path: str, data: list):
                                      "gnd3_x", "gnd3_y", "gnd3_z", "gnd4_x", "gnd4_y", "gnd4_z",
                                      "result_x", "result_y", "result_z"])
     createDirectory(path)
-    df.to_csv(f"{path}/data.csv", index=False)
+    df.to_csv(f"{path}/{name}", index=False)
 
 if __name__ == "__main__":
     result_ls = []
@@ -68,4 +68,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt as e:
         logging.warning("Interrupted by user" + str(e))
     finally:
-        save_df("data", result_ls)
+        save_df("data", "data2.csv", result_ls)

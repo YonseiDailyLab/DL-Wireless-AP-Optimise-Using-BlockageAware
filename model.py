@@ -9,7 +9,7 @@ class Net(nn.Module):
         self.hidden_N = hidden_N
         self.hidden_L = hidden_L
         self.layers = nn.ModuleList()
-        self.layers.append(nn.Linear(num_node*3, hidden_N))
+        self.layers.append(nn.Linear(num_node, hidden_N))
         for _ in range(hidden_L):
             self.layers.append(nn.Linear(hidden_N, hidden_N))
 
@@ -27,9 +27,9 @@ class Net(nn.Module):
         for layer, dropout, batch_norm in zip(self.layers, self.dropouts, self.batches):
             z = layer(z)
             z = batch_norm(z)
-            z = F.leaky_relu(z, 0.15)
+            z = F.leaky_relu(z, 0.05)
             z = dropout(z)
-
-        z = self.output(z)
+    
+        z = torch.sigmoid(self.output(z))
         return z
 
