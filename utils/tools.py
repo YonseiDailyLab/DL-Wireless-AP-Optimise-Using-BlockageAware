@@ -30,13 +30,13 @@ def calc_sig_strength(station_pos: np.array, gn_pos: np.ndarray, obst: list[Obst
     return np.sum(sig)/num_gn
 
 def calc_dist_gpu(p1: Tensor, p2: Tensor, q: Tensor):
-    v = p2.unsqueeze(0) - p1.unsqueeze(1)
-    w = q.unsqueeze(0) - p1.unsqueeze(1)
-    t = torch.clamp(torch.matmul(v, w.transpose(1, 2)) / torch.sum(v * v, dim=2, keepdim=True),0, 1)
-    v_exp, p1_exp, t_exp, q_exp = v.unsqueeze(2), p1.unsqueeze(1).unsqueeze(2), t.unsqueeze(3), q.unsqueeze(0).unsqueeze(1)
-    p = p1_exp + t_exp * v_exp
-
-    dist = torch.norm(p - q_exp, dim=3)
+    v = p2[None, :, :] - p1[:, None, :]
+    w = q[None, :, :] - p1[:, None, :]
+    v_norm_squared = (v ** 2).sum(dim=2, keepdim=True)
+    dot_product = (v[:, :, None, :] * w[:, None, :, :]).sum(dim=3)
+    t = torch.clamp(dot_product / v_norm_squared, 0, 1)
+    p = p1[:, None, None, :] + t[..., None] * v[:, :, None, :]
+    dist = torch.norm(p - q[None, None, :, :], dim=3)
     return dist
 
 def calc_sig_strength_gpu(station_pos: Tensor, gn_pos: Tensor, obst: Tensor):

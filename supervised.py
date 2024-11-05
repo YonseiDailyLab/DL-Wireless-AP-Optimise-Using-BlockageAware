@@ -3,6 +3,7 @@ import logging
 import torch
 import pandas as pd
 import numpy as np
+from torch import layout
 from tqdm import tqdm, trange
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -20,6 +21,12 @@ device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.ba
 
 logging.basicConfig(level=logging.INFO)
 writer = SummaryWriter()
+tb_layout = {
+    "SpectralEfficiency": {
+        "SpectralEfficiency": ["Multiline", ["SpectralEfficiency/pred", "SpectralEfficiency/val", "SpectralEfficiency/rand", "SpectralEfficiency/zero"]]
+    }
+}
+writer.add_custom_scalars(tb_layout)
 
 batch_size = 1024*8
 
@@ -36,9 +43,9 @@ class SvlDataset(Dataset):
 
 if __name__ == '__main__':
     obstacle_ls = [
-        CubeObstacle(-30, 15, 35, 60, 20, 0.1),
-        CubeObstacle(-30, -25, 45, 10, 35, 0.1),
-        CylinderObstacle(0, -30, 70, 10, 0.1)
+        CubeObstacle(-30, 15, 35, 60, 20, 0.3),
+        CubeObstacle(-30, -25, 45, 10, 35, 0.3),
+        CylinderObstacle(0, -30, 70, 10, 0.3)
     ]
     obst_points = []
     for obstacle in obstacle_ls:
@@ -46,6 +53,7 @@ if __name__ == '__main__':
     obst_points = torch.cat([op for op in obst_points], dim=1).mT.to(device)
 
     df = pd.concat([pd.read_csv('data/data1.csv'), pd.read_csv('data/data2.csv')])
+    # df = pd.read_csv('data/data.csv')
     logging.info(df.shape)
     x = df.iloc[:, :12].values
     y = df.iloc[:, 12:].values
@@ -71,11 +79,11 @@ if __name__ == '__main__':
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 
     model = Net(train_dataset.x.shape[1], 1024, 4).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=2.5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
 
     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
-    for epoch in range(10000):
+    for epoch in range(10001):
         total_loss = []
         model.train()
         for x_batch, y_batch in tqdm(train_loader, desc=f"Train_Epoch {epoch}"):
@@ -114,20 +122,31 @@ if __name__ == '__main__':
             y_val_origin = scaler_y.inverse_transform(y_vals)
             y_pred_origin = scaler_y.inverse_transform(y_val_preds)
             
-            val_se_ls, pred_se_ls = [], []
+            val_se_ls, pred_se_ls, rand_se_ls, zero_se_ls = [], [], [], []
+            zero_station = torch.tensor([[0, 0, 70]]).to(device)
             
             for i in range(1000):
                 val_gnd = torch.tensor(x_val_origin[i], dtype=torch.float32).reshape(4,3).to(device)
                 val_station = torch.tensor(y_val_origin[i], dtype=torch.float32).unsqueeze(0).to(device)
                 pred_station = torch.tensor(y_pred_origin[i], dtype=torch.float32).unsqueeze(0).to(device)
+                rand_station = torch.tensor([[*torch.rand(2) * 200 - 100, 70]]).to(device)
+
                 val_se_ls.append(calc_sig_strength_gpu(val_station, val_gnd, obst_points).cpu().numpy())
                 pred_se_ls.append(calc_sig_strength_gpu(pred_station, val_gnd, obst_points).cpu().numpy())
+                rand_se_ls.append(calc_sig_strength_gpu(rand_station, val_gnd, obst_points).cpu().numpy())
+                zero_se_ls.append(calc_sig_strength_gpu(zero_station, val_gnd, obst_points).cpu().numpy())
 
             val_se_mean = np.mean(val_se_ls)
             pred_se_mean = np.mean(pred_se_ls)
+            rand_se_mean = np.mean(rand_se_ls)
+            zero_se_mean = np.mean(zero_se_ls)
+
             diff_val_pred = val_se_mean - pred_se_mean
 
             writer.add_scalar("SpectralEfficiency/pred", pred_se_mean, epoch)
+            writer.add_scalar("SpectralEfficiency/val", val_se_mean, epoch)
+            writer.add_scalar("SpectralEfficiency/rand", rand_se_mean, epoch)
+            writer.add_scalar("SpectralEfficiency/zero", zero_se_mean, epoch)
             writer.add_scalar("SpectralEfficiency/diff", diff_val_pred, epoch)
                 
             logging.info(f"val_sig: {np.mean(val_se_ls)}, pred_sig: {np.mean(pred_se_ls)}, val - pred: {np.mean(val_se_ls)-np.mean(pred_se_ls)}")

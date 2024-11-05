@@ -34,13 +34,13 @@ if __name__ == "__main__":
 
     # Create obstacles and convert to torch tensors
     obstacle_ls = [
-        CubeObstacle(-30, 15, 35, 60, 20, 0.1),
-        CubeObstacle(-30, -25, 45, 10, 35, 0.1),
-        CylinderObstacle(0, -30, 70, 10, 0.1)
+        CubeObstacle(-30, 15, 35, 60, 20, 0.2),
+        CubeObstacle(-30, -25, 45, 10, 35, 0.2),
+        CylinderObstacle(0, -30, 70, 10, 0.2)
     ]
 
     # Create dataset
-    dataset = BlockageDataset(2**20, obstacle_ls).to(hparams.device)
+    dataset = BlockageDataset(2**20, obstacle_ls, 4, dtype=torch.float32).to(hparams.device)
     logging.info(f"len(dataset): {len(dataset)}")
     dataloader = DataLoader(dataset)
     try:
@@ -68,4 +68,4 @@ if __name__ == "__main__":
     except KeyboardInterrupt as e:
         logging.warning("Interrupted by user" + str(e))
     finally:
-        save_df("data", "data2.csv", result_ls)
+        save_df("data", "data.csv", result_ls)
