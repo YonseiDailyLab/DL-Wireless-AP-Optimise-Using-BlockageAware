@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
 
 from model import Net
-from datasets import CubeObstacle, CylinderObstacle
+from datasets import CubeObstacle, CylinderObstacle, SvlDataset
 from utils.tools import calc_sig_strength_gpu
 
 torch.random.manual_seed(42)
@@ -29,17 +29,6 @@ tb_layout = {
 writer.add_custom_scalars(tb_layout)
 
 batch_size = 1024*8
-
-class SvlDataset(Dataset):
-    def __init__(self, x, y, dtype=torch.float32):
-        self.x = torch.tensor(x, dtype=dtype).to(device)
-        self.y = torch.tensor(y, dtype=dtype).to(device)
-
-    def __len__(self):
-        return len(self.x)
-
-    def __getitem__(self, idx):
-        return self.x[idx], self.y[idx]
 
 if __name__ == '__main__':
     obstacle_ls = [
@@ -67,13 +56,14 @@ if __name__ == '__main__':
     logging.info(f"X shape: {x_scaled.shape}, Y shape: {y_scaled.shape}")
     logging.info(f"X: {x_scaled[0]}, Y: {y_scaled[0]}")
 
-    x_train, x_val, y_train, y_val = train_test_split(x_scaled, y_scaled, test_size=0.2, random_state=42)
+    x_train, x_val, y_train, y_val = train_test_split(x_scaled, y_scaled, test_size=0.25, random_state=42)
 
     logging.info(f"X_train shape: {x_train.shape}, Y_train shape: {y_train.shape}")
     logging.info(f"X_val shape: {x_val.shape}, Y_val shape: {y_val.shape}")
 
-    train_dataset = SvlDataset(x_train, y_train, dtype=torch.float32)
-    val_dataset = SvlDataset(x_val, y_val, dtype=torch.float32)
+    train_dataset = SvlDataset(x_train, y_train, dtype=torch.float32).to(device)
+    val_dataset = SvlDataset(x_val, y_val, dtype=torch.float32).to(device)
+    
     print(train_dataset.x.shape, train_dataset.y.shape)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)

@@ -176,6 +176,23 @@ class BlockageDataset(Dataset):
         self.gnd_nodes = self.gnd_nodes.to(device)
         self.obst_points = self.obst_points.to(device)
         return self
+    
+    
+class SvlDataset(Dataset):
+    def __init__(self, x, y, dtype=torch.float32):
+        self.x = torch.tensor(x, dtype=dtype)
+        self.y = torch.tensor(y, dtype=dtype)
+
+    def __len__(self):
+        return len(self.x)
+
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx]
+    
+    def to(self, device: torch.device):
+        self.x = self.x.to(device)
+        self.y = self.y.to(device)
+        return self
 
 if __name__ == "__main__":
     cube = CubeObstacle(0, 0, 0, 10, 10)
