@@ -132,7 +132,7 @@ class CylinderObstacle(Obstacle):
 
 
 class BlockageDataset(Dataset):
-    def __init__(self, data_num:int, obstacle_ls: list[Obstacle], gnd_num: int = 4):
+    def __init__(self, data_num:int, obstacle_ls: list[Obstacle], gnd_num: int = 4, dtype=torch.float32):
         super(BlockageDataset, self).__init__()
         self.data_num = data_num
 
@@ -143,10 +143,10 @@ class BlockageDataset(Dataset):
             indexing='xy'
         )
         Z = np.full_like(X, 70)
-        self.station_pos = torch.tensor(np.stack((X, Y, Z), axis=-1).reshape(-1, 3), dtype=torch.float64)
+        self.station_pos = torch.tensor(np.stack((X, Y, Z), axis=-1).reshape(-1, 3), dtype=dtype)
 
         # Generate ground nodes
-        self.gnd_nodes = torch.zeros((data_num, gnd_num, 3))
+        self.gnd_nodes = torch.zeros((data_num, gnd_num, 3), dtype=dtype)
         for i in trange(data_num):
             gnd_node = []
             while len(gnd_node) < gnd_num:
@@ -157,12 +157,12 @@ class BlockageDataset(Dataset):
                     is_inside = any(obstacle.is_inside(x, y, z) for obstacle in obstacle_ls)
                     if not is_inside:
                         gnd_node.append((x, y, z))
-            self.gnd_nodes[i] = torch.tensor(np.array(gnd_node), dtype=torch.float64)
+            self.gnd_nodes[i] = torch.tensor(np.array(gnd_node), dtype=dtype)
 
         # obstacle points
         obst_points = []
         for obstacle in obstacle_ls:
-            obst_points.append(torch.tensor(obstacle.points, dtype=torch.float64))
+            obst_points.append(torch.tensor(obstacle.points, dtype=dtype))
         self.obst_points = torch.cat([op for op in obst_points], dim=1).mT
 
     def __len__(self):
@@ -175,6 +175,23 @@ class BlockageDataset(Dataset):
         self.station_pos = self.station_pos.to(device)
         self.gnd_nodes = self.gnd_nodes.to(device)
         self.obst_points = self.obst_points.to(device)
+        return self
+    
+    
+class SvlDataset(Dataset):
+    def __init__(self, x, y, dtype=torch.float32):
+        self.x = torch.tensor(x, dtype=dtype)
+        self.y = torch.tensor(y, dtype=dtype)
+
+    def __len__(self):
+        return len(self.x)
+
+    def __getitem__(self, idx):
+        return self.x[idx], self.y[idx]
+    
+    def to(self, device: torch.device):
+        self.x = self.x.to(device)
+        self.y = self.y.to(device)
         return self
 
 if __name__ == "__main__":

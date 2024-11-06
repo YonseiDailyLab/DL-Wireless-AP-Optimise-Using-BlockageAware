@@ -1,3 +1,4 @@
+import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -32,4 +33,3 @@ class Net(nn.Module):
     
         z = torch.sigmoid(self.output(z))
         return z
-
