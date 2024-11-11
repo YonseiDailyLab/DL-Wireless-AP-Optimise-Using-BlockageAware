@@ -3,10 +3,10 @@ import logging
 import torch
 import pandas as pd
 import numpy as np
+import wandb
 from torch import layout
 from tqdm import tqdm, trange
 from torch.utils.data import Dataset, DataLoader
-from torch.utils.tensorboard import SummaryWriter
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score
@@ -15,20 +15,23 @@ from model import Net
 from datasets import CubeObstacle, CylinderObstacle, SvlDataset
 from utils.tools import calc_sig_strength_gpu
 
-torch.random.manual_seed(42)
-np.random.seed(42)
+rand_seed = 42
+torch.random.manual_seed(rand_seed)
+np.random.seed(rand_seed)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
-logging.basicConfig(level=logging.INFO)
-writer = SummaryWriter()
-tb_layout = {
-    "SpectralEfficiency": {
-        "SpectralEfficiency": ["Multiline", ["SpectralEfficiency/pred", "SpectralEfficiency/val", "SpectralEfficiency/rand", "SpectralEfficiency/zero"]]
-    }
-}
-writer.add_custom_scalars(tb_layout)
-
 batch_size = 1024*8
+
+wandb_project_name = "DL Based Wireless AP Optimise Using Blockage Aware Model"
+wandb.init(project=wandb_project_name, config={
+    "hidden_N": 1024,
+    "hidden_L": 4,
+    "batch_size": batch_size,
+    "rand_seed": rand_seed
+})
+
+logging.basicConfig(level=logging.INFO)
+model_save_path = "model"
 
 if __name__ == '__main__':
     obstacle_ls = [
@@ -42,7 +45,6 @@ if __name__ == '__main__':
     obst_points = torch.cat([op for op in obst_points], dim=1).mT.to(device)
 
     df = pd.concat([pd.read_csv('data/data1.csv'), pd.read_csv('data/data2.csv')])
-    # df = pd.read_csv('data/data.csv')
     logging.info(df.shape)
     x = df.iloc[:, :12].values
     y = df.iloc[:, 12:].values
@@ -83,8 +85,6 @@ if __name__ == '__main__':
             loss.backward()
             total_loss.append(loss.item())
             optimizer.step()
-        # logging.info(f"Epoch: {epoch}, Loss: {np.mean(total_loss)}")
-        writer.add_scalar("Loss/train", np.mean(total_loss), epoch)
 
         total_val_loss = []
         x_vals, y_val_preds, y_vals = [], [], []
@@ -102,9 +102,7 @@ if __name__ == '__main__':
         y_val_preds = torch.cat(y_val_preds).numpy()
         y_vals = torch.cat(y_vals).numpy()
         r2 = r2_score(y_vals, y_val_preds)
-        # logging.info(f"Val Loss: {np.mean(total_val_loss)}, R2 Score: {r2}")
-        writer.add_scalar("Loss/val", np.mean(total_val_loss), epoch)
-        writer.add_scalar("R2/val", np.mean(r2), epoch)
+        
         if epoch % 100 == 0:
             x_vals = torch.cat(x_vals).numpy()
             
@@ -133,12 +131,30 @@ if __name__ == '__main__':
 
             diff_val_pred = val_se_mean - pred_se_mean
 
-            writer.add_scalar("SpectralEfficiency/pred", pred_se_mean, epoch)
-            writer.add_scalar("SpectralEfficiency/val", val_se_mean, epoch)
-            writer.add_scalar("SpectralEfficiency/rand", rand_se_mean, epoch)
-            writer.add_scalar("SpectralEfficiency/zero", zero_se_mean, epoch)
-            writer.add_scalar("SpectralEfficiency/diff", diff_val_pred, epoch)
-                
+            wandb.log({
+                "SpectralEfficiency/pred": pred_se_mean,
+                "SpectralEfficiency/val": val_se_mean,
+                "SpectralEfficiency/rand": rand_se_mean,
+                "SpectralEfficiency/zero": zero_se_mean,
+                "SpectralEfficiency/diff": diff_val_pred,
+                "Loss/train": np.mean(total_loss), 
+                "Loss/val": np.mean(total_val_loss), 
+                "R2/val": r2
+            })
+
             logging.info(f"val_sig: {np.mean(val_se_ls)}, pred_sig: {np.mean(pred_se_ls)}, val - pred: {np.mean(val_se_ls)-np.mean(pred_se_ls)}")
-
-
+            
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'loss': r2,
+            }, os.path.join(model_save_path, f'svl:{epoch}_model.pt'))
+            logging.info(f"Training completed. {epoch} model saved.")
+        
+        else:
+            wandb.log({"Loss/train": np.mean(total_loss), 
+                       "Loss/val": np.mean(total_val_loss), 
+                       "R2/val": r2})
+    
+    wandb.finish()
