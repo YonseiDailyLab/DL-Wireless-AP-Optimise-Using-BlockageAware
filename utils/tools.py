@@ -25,9 +25,11 @@ def calc_sig_strength(station_pos: np.array, gn_pos: np.ndarray, obst: list[Obst
 
         bk_val = np.tanh(0.2 * np.min(min_dist2obst))
         chan_gain = bk_val * hparams.beta_1 / dist + (1 - bk_val) * hparams.beta_2 / (dist ** 1.65)
-        sig[i] = hparams.P_AVG * chan_gain / hparams.noise
+        snr = hparams.P_AVG * chan_gain / hparams.noise
+        se = np.log2(1 + snr)
+        sig[i] = se
 
-    return np.sum(sig)/num_gn
+    return np.mean(sig)
 
 def calc_dist_gpu(p1: Tensor, p2: Tensor, q: Tensor):
     v = p2[None, :, :] - p1[:, None, :]
