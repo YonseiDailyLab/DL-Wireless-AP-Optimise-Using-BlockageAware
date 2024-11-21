@@ -25,9 +25,11 @@ def calc_sig_strength(station_pos: np.array, gn_pos: np.ndarray, obst: list[Obst
 
         bk_val = np.tanh(0.2 * np.min(min_dist2obst))
         chan_gain = bk_val * hparams.beta_1 / dist + (1 - bk_val) * hparams.beta_2 / (dist ** 1.65)
-        sig[i] = hparams.P_AVG * chan_gain / hparams.noise
+        snr = hparams.P_AVG * chan_gain / hparams.noise
+        se = np.log2(1 + snr)
+        sig[i] = se
 
-    return np.sum(sig)/num_gn
+    return np.mean(sig)
 
 def calc_dist_gpu(p1: Tensor, p2: Tensor, q: Tensor):
     v = p2[None, :, :] - p1[:, None, :]
@@ -50,3 +52,32 @@ def calc_sig_strength_gpu(station_pos: Tensor, gn_pos: Tensor, obst: Tensor):
     se = torch.log2(1 + snr) # Data rate, Spectral Efficiency
     
     return torch.mean(se, dim=1)
+
+def calc_loss(y_pred: Tensor, x_batch: Tensor, obst_points: Tensor):
+    x_batch_reshaped = x_batch.view(-1, 4, 3)
+    
+    p1, p2, q = y_pred, x_batch_reshaped, obst_points
+
+    # v와 w의 차원 수정
+    v = p2 - p1.unsqueeze(1)  # [batch_size, 4, 3]
+    w = q.unsqueeze(0) - p1.unsqueeze(1)  # [batch_size, N_c, 3]
+
+    v_norm_squared = (v ** 2).sum(dim=2, keepdim=True)  # [batch_size, 4, 1]
+    dot_product = (v.unsqueeze(2) * w.unsqueeze(1)).sum(dim=3)  # [batch_size, 4, N_c]
+
+    t = torch.clamp(dot_product / v_norm_squared, 0, 1)  # [batch_size, 4, N_c]
+
+    p = p1.unsqueeze(1).unsqueeze(2) + t.unsqueeze(-1) * v.unsqueeze(2)  # [batch_size, 4, N_c, 3]
+
+    dist = torch.norm(p - q.unsqueeze(0).unsqueeze(0), dim=3)  # [batch_size, 4, N_c]
+
+    min_dist2obst = torch.min(dist, dim=2).values  # [batch_size, 4]
+    bk_val = torch.tanh(0.2 * min_dist2obst)  # [batch_size, 4]
+
+    norm = torch.norm(v, dim=2)  # [batch_size, 4]
+    chan_gain = bk_val * hparams.beta_1 / norm + (1 - bk_val) * hparams.beta_2 / (norm ** 1.65)  # [batch_size, 4]
+
+    snr = hparams.P_AVG * chan_gain / hparams.noise  # [batch_size, 4]
+    se = torch.log2(1 + snr)  # [batch_size, 4]
+
+    return -torch.mean(se)

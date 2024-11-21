@@ -5,7 +5,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 
 class Net(nn.Module):
-    def __init__(self, num_node, hidden_N, hidden_L):
+    def __init__(self, num_node, hidden_N, hidden_L, output_N=3):
         super(Net, self).__init__()
         self.hidden_N = hidden_N
         self.hidden_L = hidden_L
@@ -22,7 +22,7 @@ class Net(nn.Module):
         for _ in range(hidden_L):
             self.batches.append(nn.BatchNorm1d(hidden_N))
 
-        self.output = nn.Linear(hidden_N, 3)
+        self.output = nn.Linear(hidden_N, output_N)
     def forward(self, x):
         z = x
         for layer, dropout, batch_norm in zip(self.layers, self.dropouts, self.batches):
