@@ -41,10 +41,16 @@ def plot_results(ax, gnd, pred, val, obstacle_ls):
     ax.scatter(pred[0], pred[1], pred[2], c='b', marker='o')
     ax.scatter(val[0], val[1], val[2], c='g', marker='o')
     ax.scatter(0, 0, 70, c='y', marker='o')
+    
     ax.plot([gnd[0], pred[0]], [gnd[1], pred[1]], [gnd[2], pred[2]], c='b')
     ax.plot([gnd[3], pred[0]], [gnd[4], pred[1]], [gnd[5], pred[2]], c='b')
     ax.plot([gnd[6], pred[0]], [gnd[7], pred[1]], [gnd[8], pred[2]], c='b')
     ax.plot([gnd[9], pred[0]], [gnd[10], pred[1]], [gnd[11], pred[2]], c='b')
+    
+    ax.plot([gnd[0], val[0]], [gnd[1], val[1]], [gnd[2], val[2]], c='g')
+    ax.plot([gnd[3], val[0]], [gnd[4], val[1]], [gnd[5], val[2]], c='g')
+    ax.plot([gnd[6], val[0]], [gnd[7], val[1]], [gnd[8], val[2]], c='g')
+    ax.plot([gnd[9], val[0]], [gnd[10], val[1]], [gnd[11], val[2]], c='g')
 
     return ax
 
@@ -96,7 +102,7 @@ if __name__ == '__main__':
 
             # x_batch의 차원을 [batch_size, 4, 3] 형태로 변환하여 연산
             x_batch_reshaped = torch.tensor(scaler_x.inverse_transform(x_batch.cpu()), device=device, dtype=torch.float32).view(-1, 4, 3)
-            y_pred = torch.hstack((y_pred, torch.ones(y_pred.shape[0], 1, device=device) * 0.7))*100
+            y_pred = torch.hstack((y_pred, torch.ones(y_pred.shape[0], 1, device=device) * 0.85))*200-100
             loss = calc_loss(y_pred, x_batch_reshaped, obst_points)
 
             # 역전파 및 최적화
@@ -112,7 +118,7 @@ if __name__ == '__main__':
             for x_val_batch, _ in tqdm(val_loader, desc=f"Val_Epoch {epoch}"):
                 y_val_pred = model(x_val_batch)
                 x_val_batch_reshaped = torch.tensor(scaler_x.inverse_transform(x_val_batch.cpu()), device=device, dtype=torch.float32).view(-1, 4, 3)
-                y_val_pred = torch.hstack((y_val_pred, torch.ones(y_val_pred.shape[0], 1).to(device) * 0.7)) * 100
+                y_val_pred = torch.hstack((y_val_pred, torch.ones(y_val_pred.shape[0], 1).to(device) * 0.85)) * 200 - 100
                 val_loss = calc_loss(y_val_pred, x_val_batch_reshaped, obst_points)
                 total_val_loss.append(val_loss.item())
 
@@ -158,9 +164,10 @@ if __name__ == '__main__':
                 "Loss/train": np.mean(total_loss),
                 "Loss/val": np.mean(total_val_loss)
             })
-            logging.info(f"{y_val_preds[0]}, {y_val[0]}")
+            logging.info(f"x_val_origin: {x_val_origin[0]}, y_val_preds: {y_val_preds[0]}, y_val: {y_val[0]}")
             logging.info(
                 f"val_sig: {np.mean(val_se_ls)}, pred_sig: {np.mean(pred_se_ls)}, val - pred: {np.mean(val_se_ls) - np.mean(pred_se_ls)}")
+            
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
@@ -169,32 +176,44 @@ if __name__ == '__main__':
             }, os.path.join(model_save_path, f'{epoch}_model.pt'))
             logging.info(f"Training completed. {epoch} model saved.")
 
+            # 원래의 뷰
             fig = plt.figure()
+            fig.suptitle(f"Epoch {epoch} Results \n Pred SE: {pred_se_ls[0][0]:.2f}dB, Val SE: {val_se_ls[0][0]:.2f}dB", fontsize=8)
+            
             ax = fig.add_subplot(111, projection='3d')
             plot_results(ax, x_val_origin[0], y_val_preds[0], y_val[0], obstacle_ls)
             fig.tight_layout()
-            plt.savefig(f"results/unsupervised/{epoch}std_result.png")
+            plt.savefig(f"results/unsupervised/{epoch}_original_view.png")
 
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.view_init(elev=90, azim=180)
-            plot_results(ax, x_val_origin[0], y_val_preds[0], y_val[0], obstacle_ls)
-            fig.tight_layout()
-            plt.savefig(f"results/unsupervised/{epoch}upper_result.png")
+            fig, axs = plt.subplots(2, 3, subplot_kw={'projection': '3d'}, figsize=(18, 12))
+            fig.suptitle(f"Epoch {epoch} Results \n Pred SE: {pred_se_ls[0][0]:.2f}dB, Val SE: {val_se_ls[0][0]:.2f}dB", fontsize=16)
+            
+            # 첫 번째 행: XY, XZ, YZ 뷰
+            views = [('XY', (90, -90, 0)),
+                    ('XZ', (0, -90, 0)),
+                    ('YZ', (0, 0, 0))]
 
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.view_init(elev=0, azim=0)
-            plot_results(ax, x_val_origin[0], y_val_preds[0], y_val[0], obstacle_ls)
-            fig.tight_layout()
-            plt.savefig(f"results/unsupervised/{epoch}y_result.png")
+            for i, (plane, angles) in enumerate(views):
+                ax = axs[0, i]
+                ax.view_init(elev=angles[0], azim=angles[1], roll=angles[2])
+                plot_results(ax, x_val_origin[0], y_val_preds[0], y_val[0], obstacle_ls)
+                ax.set_title(f'{plane} View')
 
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            ax.view_init(elev=0, azim=90)
-            plot_results(ax, x_val_origin[0], y_val_preds[0], y_val[0], obstacle_ls)
+            # 두 번째 행: -XY, -XZ, -YZ 뷰
+            views = [('-XY', (-90, 90, 0)),
+                    ('-XZ', (0, 90, 0)),
+                    ('-YZ', (0, 180, 0))]
+
+            for i, (plane, angles) in enumerate(views):
+                ax = axs[1, i]
+                ax.view_init(elev=angles[0], azim=angles[1], roll=angles[2])
+                plot_results(ax, x_val_origin[0], y_val_preds[0], y_val[0], obstacle_ls)
+                ax.set_title(f'{plane} View')
+
+            # 전체 레이아웃 조정 및 저장
             fig.tight_layout()
-            plt.savefig(f"results/unsupervised/{epoch}x_result.png")
+            plt.savefig(f"results/unsupervised/{epoch}_primary_views.png")
+            plt.show()
 
         else:
             wandb.log({"Loss/train": np.mean(total_loss),
