@@ -21,8 +21,7 @@ np.random.seed(rand_seed)
 device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 
 batch_size = 1024*8
-# lr_ls = [5e-4, 1e-4, 5e-5, 1e-5, 1e-3]
-lr_ls = [2.5e-4]
+lr_ls = [5e-4, 1e-4, 5e-5, 1e-5, 2.5e-4]
 
 wandb_project_name = "DL Based Wireless AP Optimise Using Blockage Aware Model"
 
