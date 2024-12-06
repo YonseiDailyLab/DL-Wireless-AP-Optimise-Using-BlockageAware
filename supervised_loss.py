@@ -41,8 +41,9 @@ if __name__ == '__main__':
 
     df = pd.concat([pd.read_csv('data/data1.csv'), pd.read_csv('data/data2.csv')])
     logging.info(df.shape)
-    x = df.iloc[:, :12].values
-    y = df.iloc[:, 12:].values
+    x = df.iloc[:8192, :12].values
+    y = df.iloc[:8192, 12:].values
+    logging.info(f"X shape: {x.shape}, Y shape: {y.shape}")
 
     scaler_x = MinMaxScaler(feature_range=(0, 1))
     scaler_y = MinMaxScaler(feature_range=(0, 1))
@@ -50,20 +51,10 @@ if __name__ == '__main__':
     x_scaled = scaler_x.fit_transform(x)
     y_scaled = scaler_y.fit_transform(y)
 
-    logging.info(f"X shape: {x_scaled.shape}, Y shape: {y_scaled.shape}")
-    logging.info(f"X: {x_scaled[0]}, Y: {y_scaled[0]}")
-
-    x_train, x_val, y_train, y_val = train_test_split(x_scaled, y_scaled, test_size=0.25, random_state=42)
-
-    logging.info(f"X_train shape: {x_train.shape}, Y_train shape: {y_train.shape}")
-    logging.info(f"X_val shape: {x_val.shape}, Y_val shape: {y_val.shape}")
-
-    train_dataset = SvlDataset(x_train, y_train, dtype=torch.float32).to(device)
-    val_dataset = SvlDataset(x_val, y_val, dtype=torch.float32).to(device)
+    train_dataset = SvlDataset(x_scaled, y_scaled, dtype=torch.float32).to(device)
     
     print(train_dataset.x.shape, train_dataset.y.shape)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     
     for lr in lr_ls:
         
@@ -90,7 +81,6 @@ if __name__ == '__main__':
                 loss.backward()
                 total_loss.append(loss.item())
                 optimizer.step()
-
 
             wandb.log({"svl_test/Loss/train": np.mean(total_loss)})
         

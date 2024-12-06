@@ -40,23 +40,17 @@ if __name__ == '__main__':
 
     df = pd.concat([pd.read_csv('data/data1.csv'), pd.read_csv('data/data2.csv')])
     logging.info(df.shape)
-    x = df.iloc[:, :12].values
-    y = df.iloc[:, 12:].values
+    x = df.iloc[:8192, :12].values
+    y = df.iloc[:8192, 12:].values
 
     scaler_x = MinMaxScaler(feature_range=(0, 1))
 
     x_scaled = scaler_x.fit_transform(x)
 
-    x_train, x_val, y_train, y_val = train_test_split(x_scaled, y, test_size=0.25, random_state=42)
-
-    logging.info(f"train shape: {x_train.shape}, val shape: {x_val.shape}")
-
-    train_dataset = SvlDataset(x_train, y_train, dtype=torch.float32).to(device)
-    val_dataset = SvlDataset(x_val, y_val, dtype=torch.float32).to(device)
+    train_dataset = SvlDataset(x_scaled, y, dtype=torch.float32).to(device)
     
     print(train_dataset.x.shape, train_dataset.y.shape)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
     
     for lr in lr_ls:
         
@@ -73,7 +67,7 @@ if __name__ == '__main__':
 
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
 
-        for epoch in trange(1000):
+        for epoch in trange(3000):
             total_loss = []
             model.train()
             for x_batch, _ in train_loader:
