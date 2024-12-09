@@ -90,9 +90,9 @@ class CubeObstacle(Obstacle):
         return f"CubeCloud: {self.shape}"
 
     def is_inside(self, x: float, y: float, z: float):
-        return (self.x <= x <= self.x + self.width and
-                self.y <= y <= self.y + self.depth and
-                self.height <= z <= self.height)
+        return ((self.x <= x <= self.x + self.width) and
+                (self.y <= y <= self.y + self.depth) and
+                (0 <= z <= self.height))
 
 
 
@@ -127,8 +127,8 @@ class CylinderObstacle(Obstacle):
         return f"CylinderCloud: {self.shape}"
 
     def is_inside(self, x: float, y: float, z: float):
-        return ((self.x - x)**2 + (self.y - y)**2 <= self.radius**2 and
-                self.height <= z <= self.height)
+        return (((self.x - x)**2 + (self.y - y)**2 <= self.radius**2) and
+                0 <= z <= self.height)
 
 
 class BlockageDataset(Dataset):
